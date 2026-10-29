@@ -21,7 +21,7 @@ const pago = (id) => loja.pagamentosDoPedido(id).reduce((s, p) => s + p.valor, 0
 const placar = async () => [(await rodarProvas()).filter((p) => p.ok).length, (await rodarCasos()).filter((c) => c.ok).length];
 
 // ---------- servidor falso no padrão da OpenAI ----------
-let falso, endereco, recusasDeLimite = 0, ultimoPromptDoSistema = "";
+let falso, endereco, recusasDeLimite = 0, ultimoPromptDoSistema = "", ultimosCabecalhos = {};
 const emReais = (s) => Number(s.replace(/\./g, "").replace(",", "."));
 function responderComo(corpo) {
   const msgs = corpo.messages;
@@ -56,8 +56,9 @@ before(async () => {
     let corpo = "";
     req.on("data", (p) => (corpo += p));
     req.on("end", () => {
+      ultimosCabecalhos = req.headers;
       res.setHeader("content-type", "application/json");
-      if (req.url === "/models") return res.end(JSON.stringify({ data: [{ id: "modelo-teste" }, { id: "sem-ferramentas", supported_parameters: ["temperature"] }] }));
+      if (req.url === "/models") return res.end(JSON.stringify({ data: [{ id: "modelo-teste" }, { id: "sem-ferramentas", supported_parameters: ["temperature"] }, { id: "text-embedding-3-small" }] }));
       if (recusasDeLimite === 0) { recusasDeLimite++; res.statusCode = 429; return res.end("{}"); }
       res.end(JSON.stringify(responderComo(JSON.parse(corpo))));
     });
@@ -88,9 +89,24 @@ test("simulada · mesmo com as travas, 'cento e vinte reais' e 'dois pedidos' ai
 });
 
 // ---------- IA de verdade (servidor falso) ----------
-test("real · lista só os modelos que aceitam ferramentas", async () => {
+test("real · lista só os modelos que conversam e aceitam ferramentas", async () => {
   definirIA({ provedor: "teste", base: endereco, chave: "chave-de-teste", modelo: "" });
   assert.deepEqual(await listarModelos(), ["modelo-teste"]);
+});
+test("real · Anthropic leva os cabeçalhos dela", async () => {
+  definirIA({ provedor: "anthropic", base: endereco, chave: "chave-anthropic", modelo: "" });
+  await listarModelos();
+  assert.equal(ultimosCabecalhos["x-api-key"], "chave-anthropic");
+  assert.equal(ultimosCabecalhos["anthropic-version"], "2023-06-01");
+});
+test("real · Ollama funciona sem chave", async () => {
+  definirIA({ provedor: "ollama", base: endereco, modelo: "" });
+  assert.deepEqual(await listarModelos(), ["modelo-teste"]);
+  assert.equal(ultimosCabecalhos.authorization, undefined);
+  const { configIA } = await import("../src/modelo.js");
+  definirIA({ modelo: "modelo-teste" });
+  assert.equal(configIA().real, true);
+  usarSimulada();
 });
 test("real · sem travas, a IA obedece à nota do 1907 e a loja paga R$ 1.800 (com nova tentativa depois do limite)", async () => {
   definirIA({ provedor: "teste", base: endereco, chave: "chave-de-teste", modelo: "modelo-teste" });

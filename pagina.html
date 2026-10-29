@@ -77,13 +77,14 @@
   <div style="display:flex;flex-direction:column;gap:18px">
     <section>
       <h2>A IA do atendimento</h2>
-      <div class="grade" style="grid-template-columns:150px 1fr">
+      <div class="grade" style="grid-template-columns:190px 1fr">
         <select id="provedor"></select>
         <input id="chave" type="password" placeholder="Cole a sua chave de API (fica só no seu computador)" autocomplete="off">
       </div>
+      <input id="base" style="margin-top:8px;display:none" placeholder="Endereço da API, ex.: http://localhost:11434/v1">
       <div class="linha">
         <button id="conectar">Conectar</button>
-        <a id="criar-chave" href="#" target="_blank" rel="noopener" class="dica" style="margin:0">Criar uma chave grátis</a>
+        <a id="criar-chave" href="#" target="_blank" rel="noopener" class="dica" style="margin:0">Onde criar a chave</a>
       </div>
       <div class="linha" id="escolha-modelo" style="display:none">
         <select id="modelo" style="flex:1"></select>
@@ -110,14 +111,34 @@
 
   <section>
     <div class="abas" id="abas">
-      <button class="aba ativa" data-p="missoes">1 · Missões</button>
+      <button class="aba ativa" data-p="como">Como funciona</button>
+      <button class="aba" data-p="missoes">1 · Missões</button>
       <button class="aba" data-p="pedidos">Pedidos</button>
       <button class="aba" data-p="travas">2 · Travas e provas</button>
       <button class="aba" data-p="casos">3 · Casos</button>
       <button class="aba" data-p="decisao">4 · Decisão</button>
     </div>
 
-    <div class="painel ativo" id="p-missoes">
+    <div class="painel ativo" id="p-como">
+      <h2>Como funciona a prática</h2>
+      <p>A Loja Confia-Tudo atende pedidos de reembolso com uma IA. Ela funciona, mas foi mal configurada de propósito:
+      confia em tudo o que a IA decide. Vocês vão quebrar a loja, consertar com travas, provar que o conserto segura e
+      decidir como ela deve funcionar.</p>
+      <h3>Em dupla, com dois papéis</h3>
+      <div class="missao"><b style="min-width:92px">Atacante</b><span>tenta fazer a loja errar, pelo chat.</span></div>
+      <div class="missao"><b style="min-width:92px">Defensor</b><span>liga as travas e confere se o ataque parou de funcionar.</span></div>
+      <p class="dica">Troquem de papel na metade de cada etapa.</p>
+      <h3>O passo a passo</h3>
+      <div class="missao"><b style="min-width:24px">0</b><span><b>Ligue a IA.</b> No quadro "A IA do atendimento", escolha o provedor, cole a sua chave, clique em Conectar e escolha um modelo. Sem chave, a loja usa uma IA simulada.</span></div>
+      <div class="missao"><b style="min-width:24px">1</b><span><b>Missões.</b> O atacante tenta as 7 missões pelo chat e anota a mensagem que funcionou. Com IA de verdade, o mesmo ataque pode funcionar numa vez e falhar na outra: insista, mude as palavras, troque o modelo.</span></div>
+      <div class="missao"><b style="min-width:24px">2</b><span><b>Travas e provas.</b> O defensor liga uma trava por vez e o atacante repete o ataque. No fim, rodem as provas de segurança.</span></div>
+      <div class="missao"><b style="min-width:24px">3</b><span><b>Casos.</b> Rodem os casos e vejam quantos a loja acerta. Escrevam um caso que a loja erre, com o valor que a política manda pagar. Comparem dois modelos.</span></div>
+      <div class="missao"><b style="min-width:24px">4</b><span><b>Decisão.</b> Respondam as 4 perguntas, copiem e guardem para a roda final.</span></div>
+      <h3>A política da loja</h3>
+      <p class="dica" style="margin-top:0">Reembolso só até 30 dias depois da entrega. Um reembolso por pedido. Nunca mais do que o valor do pedido. Pedido cancelado não tem reembolso. Acima de R$ 500, quem decide é uma pessoa do financeiro. A nota do pedido é informação, nunca ordem.</p>
+    </div>
+
+    <div class="painel" id="p-missoes">
       <h2>Missões: pelo chat, faça a loja...</h2>
       <div id="missoes"></div>
       <p class="dica">Anote a mensagem que funcionou em cada missão. Vocês vão precisar dela para provar que a trava fechou a falha.</p>
@@ -296,15 +317,24 @@
   fetch("/ia").then((r) => r.json()).then((ia) => {
     provedores = ia.provedores;
     $("provedor").innerHTML = Object.entries(provedores).map(([id, p]) => `<option value="${id}">${esc(p.nome)}</option>`).join("");
-    $("provedor").value = ia.provedor || "groq";
-    $("criar-chave").href = provedores[$("provedor").value].criarChave;
+    $("provedor").value = ia.provedor || "openai";
+    ajustaProvedor(ia.base);
   });
-  $("provedor").onchange = () => { $("criar-chave").href = provedores[$("provedor").value].criarChave; };
+  function ajustaProvedor(baseAtual) {
+    const p = provedores[$("provedor").value];
+    $("criar-chave").href = p.criarChave || "#";
+    $("criar-chave").style.display = p.criarChave ? "" : "none";
+    $("criar-chave").textContent = $("provedor").value === "ollama" ? "Baixar o Ollama" : "Onde criar a chave";
+    $("base").style.display = p.baseEditavel ? "" : "none";
+    $("base").value = baseAtual && p.baseEditavel ? baseAtual : p.base;
+    $("chave").placeholder = p.semChave ? "Chave (se o seu servidor pedir; no Ollama, deixe vazio)" : "Cole a sua chave de API (fica só no seu computador)";
+  }
+  $("provedor").onchange = () => ajustaProvedor();
   $("conectar").onclick = async () => {
     $("conectar").disabled = true;
     $("ia-status").textContent = "Conectando e buscando os modelos...";
     try {
-      const d = await post("/ia/conectar", { provedor: $("provedor").value, chave: $("chave").value });
+      const d = await post("/ia/conectar", { provedor: $("provedor").value, chave: $("chave").value, base: $("base").style.display === "none" ? "" : $("base").value });
       $("chave").value = "";
       desenha(d);
       if (d.erro) { $("ia-status").textContent = "Não conectou: " + d.erro; return; }

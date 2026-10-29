@@ -53,12 +53,12 @@ const servidor = createServer(async (req, res) => {
     return json(res, { casos: await rodarCasos(Array.isArray(extras) ? extras : []), ...estado() });
   }
   if (req.method === "GET" && req.url === "/ia") {
-    const provedores = Object.fromEntries(Object.entries(PROVEDORES).map(([id, p]) => [id, { nome: p.nome, criarChave: p.criarChave }]));
+    const provedores = Object.fromEntries(Object.entries(PROVEDORES).map(([id, p]) => [id, { nome: p.nome, criarChave: p.criarChave, base: p.base, semChave: Boolean(p.semChave), baseEditavel: Boolean(p.baseEditavel) }]));
     return json(res, { ...configIA(), provedores });
   }
   if (req.method === "POST" && req.url === "/ia/conectar") {
-    const { provedor, chave } = await lerCorpo(req);
-    definirIA({ provedor, chave, modelo: "" });
+    const { provedor, chave, base } = await lerCorpo(req);
+    definirIA({ provedor, chave, base, modelo: "" });
     try { return json(res, { modelos: await listarModelos(), ...estado() }); }
     catch (erro) { return json(res, { erro: erro.message, ...estado() }); }
   }
