@@ -1,0 +1,8 @@
+{
+  "name": "Loja Confia-Tudo",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:22",
+  "forwardPorts": [3737],
+  "portsAttributes": {
+    "3737": { "label": "Loja Confia-Tudo", "onAutoForward": "openBrowser" }
+  }
+}

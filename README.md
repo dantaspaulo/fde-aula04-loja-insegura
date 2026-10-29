@@ -9,6 +9,12 @@ Caso, dados e chave são fictícios. A IA é simulada: não precisa de chave de 
 
 Precisa do Node 18.11 ou mais novo (`node --version`).
 
+- **Não tem Node?** Baixe a versão LTS em https://nodejs.org e instale como qualquer programa. Também dá pelo
+  terminal: `brew install node` no Mac, `winget install OpenJS.NodeJS.LTS` no Windows. Depois feche e abra o terminal.
+- **Não pode instalar nada no computador?** Use o Codespaces, com uma conta grátis do GitHub: na página deste
+  repositório, **Code → Codespaces → Create codespace**. Abre um VS Code no navegador, já com Node. Lá, rode
+  `npm start` e a loja abre numa aba.
+
 ```bash
 git clone https://github.com/dantaspaulo/fde-aula04-loja-insegura
 cd fde-aula04-loja-insegura
