@@ -2,12 +2,12 @@
 import { createServer } from "node:http";
 import { readFileSync } from "node:fs";
 import { atender, travas, ligarTrava, testarConexao } from "./src/atendimento.js";
-import { CENARIOS_COMPORTAMENTO, feedbackDoTurno, rodarProvas, testarComportamento, testarCriterio } from "./src/cenarios.js";
+import { CENARIOS_COMPORTAMENTO, PROVAS, feedbackDoTurno, rodarProvas, testarComportamento, testarCriterio } from "./src/cenarios.js";
 import { rodarCasos } from "./src/casos.js";
 import { PROVEDORES, configIA, definirIA, dicaDoErro, listarModelos } from "./src/modelo.js";
 import {
   INSTRUCOES_PADRAO, lerEstadoAluno, definirInstrucoes, definirGuarda, marcarEtapa, etapasComEstado, liberarAte,
-  registrarCriterio,
+  registrarCriterio, guardarResultado,
 } from "./src/estado-aluno.js";
 import * as loja from "./src/loja.js";
 
@@ -30,6 +30,9 @@ function estado() {
     instrucoesPadrao: INSTRUCOES_PADRAO,
     criterios: aluno.criterios,
     criteriosDef: CENARIOS_COMPORTAMENTO.map(({ id, titulo, mensagem, porque }) => ({ id, titulo, mensagem, porque })),
+    provasDef: PROVAS.map((p) => p.nome),
+    provas: aluno.resultados.provas || null,
+    casos: aluno.resultados.casos || null,
   };
 }
 
@@ -140,6 +143,7 @@ const servidor = createServer(async (req, res) => {
   if (req.method === "POST" && u === "/provas") {
     if (semModelo(res)) return;
     const provas = await rodarProvas();
+    guardarResultado("provas", provas);
     if (provas.every((p) => p.ok)) marcarEtapa("blindar", true);
     return json(res, { provas, ...estado() });
   }
@@ -147,6 +151,7 @@ const servidor = createServer(async (req, res) => {
     const { extras = [] } = await lerCorpo(req);
     if (semModelo(res)) return;
     const casos = await rodarCasos(Array.isArray(extras) ? extras : []);
+    guardarResultado("casos", casos);
     marcarEtapa("medir", true);
     return json(res, { casos, ...estado() });
   }

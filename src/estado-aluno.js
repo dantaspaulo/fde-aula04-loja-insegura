@@ -27,6 +27,7 @@ const vazio = () => ({
   feitas: {},
   criterios: {},
   travas: {},
+  resultados: {},
 });
 
 let estado = vazio();
@@ -48,6 +49,7 @@ export function lerEstadoAluno() {
     feitas: { ...estado.feitas },
     criterios: { ...estado.criterios },
     travas: { ...estado.travas },
+    resultados: { ...estado.resultados },
   };
 }
 
@@ -56,6 +58,12 @@ export function definirInstrucoes(texto) {
   const novo = String(texto ?? "").slice(0, 4000);
   if (novo !== estado.instrucoes) estado.criterios = {};
   estado.instrucoes = novo;
+  gravar();
+}
+
+// O último resultado das provas e dos casos, para não sumir ao trocar de etapa ou recarregar.
+export function guardarResultado(nome, valor) {
+  estado.resultados[nome] = valor;
   gravar();
 }
 
