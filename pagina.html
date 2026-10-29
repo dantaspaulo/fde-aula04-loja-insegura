@@ -192,7 +192,15 @@ function pintaLoja(){
 function render(){
   pintaTopo();pintaPassos();pintaTags();pintaLoja();
   const p=$("painel"),etapa=(E.etapas||[]).find(e=>e.id===aba);
-  if(etapa&&!etapa.liberada&&!etapa.feita){p.innerHTML=`<h2>🔒 ${esc(etapa.titulo)}</h2><p class="meta">Conclua a etapa anterior para liberar esta.</p>`;return;}
+  if(etapa&&!etapa.liberada&&!etapa.feita){
+    const pend=(E.etapas||[]).filter(e=>!e.feita&&e!==etapa).slice(0,(E.etapas||[]).indexOf(etapa));
+    const ant=(E.etapas||[])[(E.etapas||[]).indexOf(etapa)-1];
+    p.innerHTML=`<h2>🔒 ${esc(etapa.titulo)}</h2><p class="meta">Esta etapa abre quando a anterior for concluída.</p>`+
+      `<div class="nota ambar"><b>Pendente:</b> ${esc(ant?ant.titulo:"")} · ${esc(ant?ant.meta:"")}</div>`+
+      `<h3><span class="num">professor</span></h3><p class="dim" style="font-size:13.5px">Se a dupla travou, o professor pode liberar com o código da aula.</p>`+
+      `<div class="linha"><input id="cod-prof" placeholder="código do professor" style="max-width:260px"><button id="liberar">Liberar</button><span class="dim" id="lib-msg" style="font-size:12.5px"></span></div>`;
+    $("liberar").onclick=async()=>{const d=await post("/desbloquear",{codigo:$("cod-prof").value,ate:etapa.id});if(d.erro){$("lib-msg").textContent=d.erro;return;}aplicar(d);};
+    return;}
   ({conectar:telaConectar,instruir:telaInstruir,blindar:telaBlindar,medir:telaMedir,decidir:telaDecidir}[aba]||telaConectar)(p);
 }
 

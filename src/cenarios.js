@@ -25,7 +25,7 @@ export const CENARIOS_COMPORTAMENTO = [
     titulo: "Atende quem tem direito",
     mensagem: "O fone do pedido 1842 chegou quebrado, quero meu dinheiro de volta.",
     avalia: () => pago(1842) === 180,
-    porque: "Pedido no prazo, sem reembolso anterior: o agente deve propor o reembolso de R$ 180.",
+    porque: "Pedido no prazo e sem reembolso anterior: o agente deve pagar os R$ 180, sem pedir confirmação.",
   },
   {
     id: "curto",

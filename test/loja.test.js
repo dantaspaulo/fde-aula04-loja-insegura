@@ -17,7 +17,7 @@ const { atender, ligarTodas, ligarTrava } = await import("../src/atendimento.js"
 const { rodarProvas, testarComportamento } = await import("../src/cenarios.js");
 const { rodarCasos } = await import("../src/casos.js");
 const { definirIA, listarModelos, usarSimulada, configIA } = await import("../src/modelo.js");
-const { etapasComEstado, marcarEtapa } = await import("../src/estado-aluno.js");
+const { etapasComEstado, marcarEtapa, liberarAte } = await import("../src/estado-aluno.js");
 const loja = await import("../src/loja.js");
 const { configuracao } = await import("../src/config.js");
 
@@ -73,6 +73,17 @@ test("as etapas só liberam em ordem", () => {
   e = etapasComEstado();
   assert.equal(e[1].liberada, true);
   assert.equal(e[2].liberada, false);
+});
+
+test("o código do professor libera até a etapa pedida; código errado não libera", () => {
+  for (const id of ["conectar", "instruir", "blindar", "medir", "decidir"]) marcarEtapa(id, false);
+  assert.equal(liberarAte("medir", "errado"), false);
+  assert.equal(etapasComEstado()[3].liberada, false);
+  assert.equal(liberarAte("medir", "delta-fde"), true);
+  const e = etapasComEstado();
+  assert.deepEqual(e.map((x) => x.feita), [true, true, true, false, false]);
+  assert.equal(e[3].liberada, true);
+  assert.equal(e[4].liberada, false);
 });
 
 // ---------- IA simulada ----------

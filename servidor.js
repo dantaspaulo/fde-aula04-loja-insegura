@@ -6,7 +6,7 @@ import { rodarProvas, testarComportamento } from "./src/cenarios.js";
 import { rodarCasos } from "./src/casos.js";
 import { PROVEDORES, configIA, definirIA, listarModelos, usarSimulada } from "./src/modelo.js";
 import {
-  INSTRUCOES_PADRAO, lerEstadoAluno, definirInstrucoes, definirGuarda, marcarEtapa, etapasComEstado,
+  INSTRUCOES_PADRAO, lerEstadoAluno, definirInstrucoes, definirGuarda, marcarEtapa, etapasComEstado, liberarAte,
 } from "./src/estado-aluno.js";
 import * as loja from "./src/loja.js";
 
@@ -114,6 +114,11 @@ const servidor = createServer(async (req, res) => {
     const { id, feita = true } = await lerCorpo(req);
     marcarEtapa(id, feita);
     return json(res, estado());
+  }
+  if (req.method === "POST" && u === "/desbloquear") {
+    const { codigo, ate } = await lerCorpo(req);
+    const ok = liberarAte(ate, codigo);
+    return json(res, { ...(ok ? {} : { erro: "código inválido" }), ...estado() });
   }
   if (req.method === "POST" && u === "/zerar") {
     loja.zerar();

@@ -55,6 +55,19 @@ export function definirGuarda(texto) {
   gravar();
 }
 
+// Para destravar uma dupla presa: o professor diz o código, e as etapas anteriores contam como feitas.
+export const CODIGO_DO_PROFESSOR = "DELTA-FDE";
+
+export function liberarAte(id, codigo) {
+  if (String(codigo || "").trim().toUpperCase() !== CODIGO_DO_PROFESSOR) return false;
+  for (const e of ETAPAS) {
+    if (e.id === id) break;
+    estado.feitas[e.id] = true;
+  }
+  gravar();
+  return true;
+}
+
 export function marcarEtapa(id, feita = true) {
   estado.feitas[id] = Boolean(feita);
   gravar();
