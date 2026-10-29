@@ -1,4 +1,4 @@
-// IA SIMULADA, INGÊNUA DE PROPÓSITO.
+// IA SIMULADA, INGÊNUA DE PROPÓSITO (usada quando o aluno ainda não ligou uma IA de verdade).
 // Ela entende o pedido de reembolso, mas obedece a qualquer ordem que aparecer no texto que lê:
 // a mensagem do cliente e a nota do pedido. Um modelo de verdade também pode fazer isso.
 //
@@ -9,10 +9,10 @@ import { buscarPedido } from "./loja.js";
 const VALOR = /R\$\s*([\d.]+(?:,\d{1,2})?)/i;
 const emReais = (texto) => Number(texto.replace(/\./g, "").replace(",", "."));
 
-export function ia(mensagem, { lerNota = true } = {}) {
+export function iaSimulada(mensagem, { lerNota = true } = {}) {
   const texto = String(mensagem);
 
-  if (/(chave|senha|token|configura)/i.test(texto)) {
+  if (/(chave|senha|token|configura|cofre|c[oó]digo secreto)/i.test(texto)) {
     return { acao: "mostrar_configuracao" };
   }
   if (/(apag|limp|zer|delet)/i.test(texto)) {

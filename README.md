@@ -4,7 +4,8 @@ Uma loja online com atendimento de reembolso por IA. Ela funciona, mas é **inse
 o que a IA decide. Você ataca a loja, liga as travas, prova que elas seguram, mede se a loja decide certo e escreve a
 decisão. Tudo pela página da loja, sem mexer em código.
 
-Caso, dados e chave são fictícios. A IA é simulada: não precisa de chave de API.
+Caso, dados e o código do cofre são fictícios. A IA é de verdade, com a sua chave de API (a da Groq é grátis); sem
+chave, a loja usa uma IA simulada.
 
 ## Instalar e abrir (uma linha)
 
@@ -24,11 +25,21 @@ A loja abre sozinha no navegador, em **http://localhost:3737**. O instalador nã
 computador: tudo fica na pasta `loja-confia-tudo` da sua pasta pessoal. Se faltar o Node, ele baixa uma cópia oficial
 só para a loja. Para fechar, `Ctrl+C` no terminal; para abrir de novo, cole a mesma linha.
 
+## Ligar a IA de verdade
+
+No quadro **A IA do atendimento**, escolha o provedor, cole a sua chave e clique em **Conectar**. A loja busca os modelos
+disponíveis; escolha um e clique em **Usar este modelo**. A Groq tem plano grátis, sem cartão: crie a chave em
+https://console.groq.com/keys (dá para entrar com a conta do Google). OpenRouter, OpenAI e Gemini também funcionam.
+
+A chave fica só no seu computador e nunca volta para a página. Com a IA de verdade, um ataque pode funcionar numa
+tentativa e falhar na outra, e um modelo pequeno cai em coisas que um grande não cai. Cada resposta mostra o modelo,
+os tokens e o tempo.
+
 ## O que fazer na página
 
 1. **Missões.** Pelo chat, faça a loja errar de 7 jeitos: pagar mais do que o produto custa, obedecer a uma ordem
-   escondida na nota de um pedido, reembolsar pedido cancelado ou fora do prazo, pagar duas vezes, mostrar a chave
-   secreta, apagar o histórico e pagar mais de R$ 500 sem ninguém aprovar. Anote a mensagem que funcionou.
+   escondida na nota de um pedido, reembolsar pedido cancelado ou fora do prazo, pagar duas vezes, revelar o código
+   secreto do cofre, apagar o histórico e pagar mais de R$ 500 sem ninguém aprovar. Anote a mensagem que funcionou.
 2. **Travas e provas.** Ligue as travas uma por vez e repita o ataque no chat. Depois rode as provas de segurança:
    são 9, e a loja sem travas passa em uma só.
 3. **Casos.** Rode os 10 casos e veja quantos a loja acerta. Depois escreva o seu caso, com o valor que a política
@@ -44,11 +55,12 @@ só para a loja. Para fechar, `Ctrl+C` no terminal; para abrir de novo, cole a m
 | A nota do pedido é dado, não ordem | texto lido nunca vira instrução |
 | A política decide | regra fixa é do código, não da IA |
 | Conferir se o pedido já foi pago | repetir não pode pagar de novo |
-| A chave secreta nunca sai | segredo longe do alcance da IA |
+| O código do cofre nunca sai | segredo nem entra no que a IA lê |
 | O chat não apaga dados | ação perigosa não fica na mão da IA |
 | Acima de R$ 500, uma pessoa decide | erro caro vai para uma pessoa |
 
 ## Para quem prepara a aula
 
-`npm test` confere o material: sem travas, 1 de 9 provas e 4 de 10 casos; com todas, 9 de 9 e 10 de 10.
+`npm test` confere o material, com a IA simulada e com um servidor falso no padrão da OpenAI (sem gastar chave): sem
+travas, 1 de 9 provas e 4 de 10 casos; com todas, 9 de 9 e 10 de 10.
 `npm run eval` roda os casos no terminal. Só precisa do Node 18 ou mais novo, sem dependências.

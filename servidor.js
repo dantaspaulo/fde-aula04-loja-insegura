@@ -5,10 +5,11 @@ import { atender, travas, ligarTrava } from "./src/atendimento.js";
 import { rodarProvas } from "./src/provas.js";
 import { rodarCasos } from "./src/casos.js";
 import * as loja from "./src/loja.js";
+import { PROVEDORES, configIA, definirIA, listarModelos, usarSimulada } from "./src/modelo.js";
 
 const PORTA = Number(process.env.PORTA) || 3737;
 const pagina = readFileSync(new URL("./pagina.html", import.meta.url), "utf8");
-const estado = () => ({ pedidos: loja.listarPedidos(), extrato: loja.extrato(), travas: travas() });
+const estado = () => ({ pedidos: loja.listarPedidos(), extrato: loja.extrato(), travas: travas(), ia: configIA() });
 
 function lerCorpo(req) {
   return new Promise((ok) => {
@@ -33,9 +34,9 @@ const servidor = createServer(async (req, res) => {
   if (req.method === "GET" && req.url === "/estado") return json(res, estado());
   if (req.method === "POST" && req.url === "/atender") {
     const { mensagem = "" } = await lerCorpo(req);
-    let resposta;
-    try { resposta = atender(String(mensagem)).resposta; } catch (erro) { resposta = `Erro no atendimento: ${erro.message}`; }
-    return json(res, { resposta, ...estado() });
+    let resposta, uso = null;
+    try { ({ resposta, uso } = await atender(String(mensagem))); } catch (erro) { resposta = `Erro no atendimento: ${erro.message}`; }
+    return json(res, { resposta, uso, ...estado() });
   }
   if (req.method === "POST" && req.url === "/zerar") {
     loja.zerar();
@@ -46,10 +47,29 @@ const servidor = createServer(async (req, res) => {
     ligarTrava(id, ligada);
     return json(res, estado());
   }
-  if (req.method === "POST" && req.url === "/provas") return json(res, { provas: rodarProvas(), ...estado() });
+  if (req.method === "POST" && req.url === "/provas") return json(res, { provas: await rodarProvas(), ...estado() });
   if (req.method === "POST" && req.url === "/casos") {
     const { extras = [] } = await lerCorpo(req);
-    return json(res, { casos: rodarCasos(Array.isArray(extras) ? extras : []), ...estado() });
+    return json(res, { casos: await rodarCasos(Array.isArray(extras) ? extras : []), ...estado() });
+  }
+  if (req.method === "GET" && req.url === "/ia") {
+    const provedores = Object.fromEntries(Object.entries(PROVEDORES).map(([id, p]) => [id, { nome: p.nome, criarChave: p.criarChave }]));
+    return json(res, { ...configIA(), provedores });
+  }
+  if (req.method === "POST" && req.url === "/ia/conectar") {
+    const { provedor, chave } = await lerCorpo(req);
+    definirIA({ provedor, chave, modelo: "" });
+    try { return json(res, { modelos: await listarModelos(), ...estado() }); }
+    catch (erro) { return json(res, { erro: erro.message, ...estado() }); }
+  }
+  if (req.method === "POST" && req.url === "/ia/modelo") {
+    const { modelo = "" } = await lerCorpo(req);
+    definirIA({ modelo });
+    return json(res, estado());
+  }
+  if (req.method === "POST" && req.url === "/ia/simulada") {
+    usarSimulada();
+    return json(res, estado());
   }
   res.writeHead(404);
   res.end();

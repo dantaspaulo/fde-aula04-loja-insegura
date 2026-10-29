@@ -1,0 +1,81 @@
+// A ligação com a IA de verdade: qualquer provedor no padrão da OpenAI (Groq, OpenRouter, OpenAI, Gemini).
+// A chave do aluno fica só no computador dele, em config-ia.json (fora do git), e nunca volta para a página.
+import { readFileSync, writeFileSync } from "node:fs";
+import { pathToFileURL } from "node:url";
+
+const ARQUIVO = process.env.LOJA_CONFIG_IA ? pathToFileURL(process.env.LOJA_CONFIG_IA) : new URL("../config-ia.json", import.meta.url);
+
+export const PROVEDORES = {
+  groq: { nome: "Groq (grátis)", base: "https://api.groq.com/openai/v1", criarChave: "https://console.groq.com/keys" },
+  openrouter: { nome: "OpenRouter", base: "https://openrouter.ai/api/v1", criarChave: "https://openrouter.ai/settings/keys" },
+  openai: { nome: "OpenAI", base: "https://api.openai.com/v1", criarChave: "https://platform.openai.com/api-keys" },
+  gemini: { nome: "Google Gemini", base: "https://generativelanguage.googleapis.com/v1beta/openai", criarChave: "https://aistudio.google.com/apikey" },
+};
+
+let cfg = { provedor: "groq", base: "", chave: "", modelo: "" };
+try { cfg = { ...cfg, ...JSON.parse(readFileSync(ARQUIVO, "utf8")) }; } catch {}
+
+const base = () => cfg.base || PROVEDORES[cfg.provedor]?.base || "";
+const gravar = () => { try { writeFileSync(ARQUIVO, JSON.stringify(cfg, null, 2), { mode: 0o600 }); } catch {} };
+
+export function configIA() {
+  return {
+    provedor: cfg.provedor,
+    modelo: cfg.modelo,
+    temChave: Boolean(cfg.chave),
+    finalDaChave: cfg.chave ? cfg.chave.slice(-4) : "",
+    real: Boolean(cfg.chave && cfg.modelo),
+  };
+}
+
+export function definirIA({ provedor, chave, modelo, base: outraBase } = {}) {
+  if (provedor && (PROVEDORES[provedor] || outraBase)) cfg.provedor = provedor;
+  if (outraBase !== undefined) cfg.base = outraBase;
+  if (chave) cfg.chave = String(chave).trim();
+  if (modelo !== undefined) cfg.modelo = String(modelo);
+  gravar();
+  return configIA();
+}
+
+export function usarSimulada() {
+  cfg.modelo = "";
+  gravar();
+  return configIA();
+}
+
+async function pedir(caminho, opcoes = {}) {
+  const fator = Number(process.env.LOJA_ESPERA_429_FATOR ?? 1);
+  const tentativas = [0, 3000, 8000, 15000].map((ms) => ms * fator);
+  for (let i = 0; i < tentativas.length; i++) {
+    if (tentativas[i]) await new Promise((r) => setTimeout(r, tentativas[i]));
+    const res = await fetch(base() + caminho, {
+      ...opcoes,
+      headers: { "content-type": "application/json", authorization: `Bearer ${cfg.chave}`, ...(opcoes.headers || {}) },
+    });
+    if (res.status === 429 && i < tentativas.length - 1) continue; // limite do plano grátis: espera e tenta de novo
+    const texto = await res.text();
+    if (!res.ok) throw new Error(`a IA respondeu ${res.status}: ${texto.slice(0, 200)}`);
+    return JSON.parse(texto);
+  }
+}
+
+export async function listarModelos() {
+  const dados = await pedir("/models");
+  const lista = (dados.data || dados.models || [])
+    .filter((m) => !Array.isArray(m.supported_parameters) || m.supported_parameters.includes("tools"))
+    .map((m) => String(m.id || m.name || "").replace(/^models\//, ""))
+    .filter(Boolean)
+    .sort();
+  return lista;
+}
+
+export async function chamarModelo(mensagens, ferramentas) {
+  const inicio = Date.now();
+  const dados = await pedir("/chat/completions", {
+    method: "POST",
+    body: JSON.stringify({ model: cfg.modelo, messages: mensagens, tools: ferramentas, tool_choice: "auto", temperature: 0.5 }),
+  });
+  const escolha = dados.choices?.[0];
+  if (!escolha) throw new Error("a IA não devolveu resposta");
+  return { mensagem: escolha.message || {}, uso: dados.usage || {}, ms: Date.now() - inicio };
+}
