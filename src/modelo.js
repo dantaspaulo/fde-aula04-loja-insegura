@@ -21,6 +21,11 @@ const NAO_CONVERSA = /embed|whisper|tts|dall-e|image|audio|moderation|transcri|r
 let cfg = { provedor: "openai", base: "", chave: "", modelo: "" };
 try { cfg = { ...cfg, ...JSON.parse(readFileSync(ARQUIVO, "utf8")) }; } catch {}
 
+// Alguns modelos recusam parâmetros: os de raciocínio da OpenAI só aceitam ferramentas com
+// reasoning_effort "none", e vários recusam temperature. A loja aprende com o erro 400 e se ajusta,
+// guardando o ajuste por modelo, para o aluno não precisar saber disso.
+const ajustesPorModelo = new Map();
+
 const base = () => cfg.base || PROVEDORES[cfg.provedor]?.base || "";
 const gravar = () => { try { writeFileSync(ARQUIVO, JSON.stringify(cfg, null, 2), { mode: 0o600 }); } catch {} };
 
@@ -34,6 +39,7 @@ export function configIA() {
     temChave: Boolean(cfg.chave),
     finalDaChave: cfg.chave ? cfg.chave.slice(-4) : "",
     real: Boolean(cfg.modelo && (cfg.chave || semChave())),
+    ajustes: Object.keys(ajustesPorModelo.get(cfg.modelo) || {}),
   };
 }
 
@@ -72,7 +78,11 @@ async function pedir(caminho, opcoes = {}) {
     });
     if (res.status === 429 && i < tentativas.length - 1) continue; // limite do plano grátis: espera e tenta de novo
     const texto = await res.text();
-    if (!res.ok) throw new Error(`a IA respondeu ${res.status}: ${texto.slice(0, 200)}`);
+    if (!res.ok) {
+      let detalhe = texto;
+      try { const j = JSON.parse(texto); detalhe = j.error?.message || j.message || (typeof j.error === "string" ? j.error : texto); } catch {}
+      throw new Error(`a IA respondeu ${res.status}: ${String(detalhe).slice(0, 300)}`);
+    }
     return JSON.parse(texto);
   }
 }
@@ -89,11 +99,34 @@ export async function listarModelos() {
 
 export async function chamarModelo(mensagens, ferramentas) {
   const inicio = Date.now();
-  const dados = await pedir("/chat/completions", {
-    method: "POST",
-    body: JSON.stringify({ model: cfg.modelo, messages: mensagens, tools: ferramentas, tool_choice: "auto", temperature: 0.5 }),
-  });
-  const escolha = dados.choices?.[0];
-  if (!escolha) throw new Error("a IA não devolveu resposta");
-  return { mensagem: escolha.message || {}, uso: dados.usage || {}, ms: Date.now() - inicio };
+  const aj = ajustesPorModelo.get(cfg.modelo) || {};
+  for (let tentativa = 0; tentativa < 3; tentativa++) {
+    const corpo = { model: cfg.modelo, messages: mensagens, tools: ferramentas, tool_choice: "auto" };
+    if (!aj.semTemperatura) corpo.temperature = 0.5;
+    if (aj.esforcoNenhum) corpo.reasoning_effort = "none";
+    try {
+      const dados = await pedir("/chat/completions", { method: "POST", body: JSON.stringify(corpo) });
+      const escolha = dados.choices?.[0];
+      if (!escolha) throw new Error("a IA não devolveu resposta");
+      return { mensagem: escolha.message || {}, uso: dados.usage || {}, ms: Date.now() - inicio };
+    } catch (erro) {
+      const m = String(erro.message);
+      if (/ 400:/.test(m) && /reasoning_effort/i.test(m) && !aj.esforcoNenhum) { aj.esforcoNenhum = true; ajustesPorModelo.set(cfg.modelo, aj); continue; }
+      if (/ 400:/.test(m) && /temperature/i.test(m) && !aj.semTemperatura) { aj.semTemperatura = true; ajustesPorModelo.set(cfg.modelo, aj); continue; }
+      throw erro;
+    }
+  }
+  throw new Error("o modelo recusou os parâmetros mesmo depois dos ajustes");
+}
+
+// O que dizer ao aluno quando a IA falha: o erro do provedor vem em inglês e cru.
+export function dicaDoErro(mensagem) {
+  const m = String(mensagem);
+  if (/ 40[13]:/.test(m)) return "O provedor recusou a chave. Confira a chave e o provedor na Etapa 1.";
+  if (/ 404:/.test(m)) return "O provedor não achou esse modelo. Escolha outro na Etapa 1.";
+  if (/ 429:/.test(m)) return "Limite do seu plano no provedor. Espere um pouco ou troque de modelo na Etapa 1.";
+  if (/ 400:/.test(m) && /tool|function/i.test(m)) return "Este modelo não aceita ferramentas (function calling) por aqui. Escolha outro na Etapa 1.";
+  if (/ 400:/.test(m)) return "O provedor recusou a chamada. Leia a mensagem acima e, se precisar, troque de modelo na Etapa 1.";
+  if (/fetch failed|ECONNREFUSED|ENOTFOUND|ETIMEDOUT/i.test(m)) return "Não alcançou o provedor. No Ollama, confira se ele está aberto; nos outros, a internet.";
+  return "";
 }

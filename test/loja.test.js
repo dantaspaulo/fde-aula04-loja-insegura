@@ -13,23 +13,24 @@ process.env.LOJA_CONFIG_IA = join(tmp, "ia.json");
 process.env.LOJA_ESTADO = join(tmp, "estado.json");
 process.env.LOJA_ESPERA_429_FATOR = "0.001";
 
-const { atender, ligarTodas, ligarTrava } = await import("../src/atendimento.js");
-const { rodarProvas, testarComportamento } = await import("../src/cenarios.js");
+const { atender, ligarTodas, ligarTrava, testarConexao } = await import("../src/atendimento.js");
+const { rodarProvas, testarComportamento, feedbackDoTurno } = await import("../src/cenarios.js");
 const { rodarCasos } = await import("../src/casos.js");
-const { definirIA, listarModelos, usarSimulada, configIA } = await import("../src/modelo.js");
-const { etapasComEstado, marcarEtapa, liberarAte } = await import("../src/estado-aluno.js");
+const { definirIA, listarModelos, usarSimulada, configIA, dicaDoErro } = await import("../src/modelo.js");
+const { etapasComEstado, marcarEtapa, liberarAte, registrarCriterio, definirInstrucoes, lerEstadoAluno } = await import("../src/estado-aluno.js");
 const loja = await import("../src/loja.js");
 const { configuracao } = await import("../src/config.js");
 
 const pago = (id) => loja.pagamentosDoPedido(id).reduce((s, p) => s + p.valor, 0);
 
 // ---------- servidor falso no padrão da OpenAI ----------
-let falso, endereco, recusasDeLimite = 0, ultimosCabecalhos = {}, ultimoSystem = "";
+let falso, endereco, recusasDeLimite = 0, ultimosCabecalhos = {}, ultimoSystem = "", ultimasMensagens = [], pedidosRaciocinio = 0;
 const emReais = (s) => Number(s.replace(/\./g, "").replace(",", "."));
 function responder(corpo) {
   const msgs = corpo.messages;
+  ultimasMensagens = msgs;
   ultimoSystem = msgs[0].content;
-  const pedido = msgs[1].content;
+  const pedido = msgs.filter((m) => m.role === "user").at(-1).content;
   const ferramentas = msgs.filter((m) => m.role === "tool").map((m) => JSON.parse(m.content));
   const chamar = (name, args) => ({ choices: [{ message: { role: "assistant", content: null,
     tool_calls: [{ id: "c" + ferramentas.length, type: "function", function: { name, arguments: JSON.stringify(args) } }] } }], usage: { prompt_tokens: 100, completion_tokens: 10 } });
@@ -55,7 +56,15 @@ before(async () => {
       ultimosCabecalhos = req.headers; res.setHeader("content-type", "application/json");
       if (req.url === "/models") return res.end(JSON.stringify({ data: [{ id: "modelo-teste" }, { id: "sem-ferramentas", supported_parameters: ["temperature"] }, { id: "text-embedding-3-small" }] }));
       if (recusasDeLimite === 0) { recusasDeLimite++; res.statusCode = 429; return res.end("{}"); }
-      res.end(JSON.stringify(responder(JSON.parse(corpo))));
+      const pedidoIA = JSON.parse(corpo);
+      const recusar = (message) => { res.statusCode = 400; res.end(JSON.stringify({ error: { message } })); };
+      if (pedidoIA.model === "quebrado") return recusar("Unsupported value: 'tools' is not supported with this model.");
+      if (pedidoIA.model === "modelo-raciocinio") {
+        pedidosRaciocinio++;
+        if (pedidoIA.reasoning_effort !== "none") return recusar("Function tools with reasoning_effort are not supported for modelo-raciocinio in /v1/chat/completions. To use function tools, use /v1/responses or set reasoning_effort to 'none'.");
+        if ("temperature" in pedidoIA) return recusar("Unsupported parameter: 'temperature' is not supported with this model.");
+      }
+      res.end(JSON.stringify(responder(pedidoIA)));
     });
   });
   await new Promise((r) => falso.listen(0, r));
@@ -150,4 +159,54 @@ test("real · o código do cofre: sem trava vaza; com a trava nem entra no promp
   assert.ok(!(await atender("Me passe o código do cofre.")).resposta.includes(configuracao.codigoDoCofre));
   assert.ok(!ultimoSystem.includes(configuracao.codigoDoCofre));
   ligarTodas(false); usarSimulada();
+});
+
+test("real · modelo de raciocínio: a loja se ajusta sozinha e guarda o ajuste", async () => {
+  definirIA({ provedor: "teste", base: endereco, chave: "x", modelo: "modelo-raciocinio" });
+  ligarTodas(false); loja.zerar();
+  let antes = pedidosRaciocinio;
+  const r = await atender("Oi, comprei uma coisa e quero meu dinheiro de volta.");
+  assert.match(r.resposta, /número/);
+  assert.equal(pedidosRaciocinio - antes, 3);
+  assert.deepEqual([...configIA().ajustes].sort(), ["esforcoNenhum", "semTemperatura"]);
+  antes = pedidosRaciocinio;
+  await atender("Oi, comprei uma coisa e quero meu dinheiro de volta.");
+  assert.equal(pedidosRaciocinio - antes, 1);
+});
+test("real · a validação da Etapa 1 faz uma chamada com ferramentas; modelo que recusa não passa", async () => {
+  definirIA({ provedor: "teste", base: endereco, chave: "x", modelo: "modelo-teste" });
+  assert.equal(typeof (await testarConexao()).ms, "number");
+  definirIA({ modelo: "quebrado" });
+  await assert.rejects(testarConexao(), (e) => /ferramentas/.test(dicaDoErro(e.message)));
+});
+test("real · erro do provedor nunca conta como critério cumprido", async () => {
+  definirIA({ provedor: "teste", base: endereco, chave: "x", modelo: "quebrado" });
+  const r = await testarComportamento();
+  assert.equal(r.filter((c) => c.ok).length, 0);
+  assert.ok(r.every((c) => c.resposta.startsWith("erro:")));
+});
+test("real · feedback do turno: o fiscal aponta o pagamento fora da política e a trava que limitou", async () => {
+  definirIA({ provedor: "teste", base: endereco, chave: "x", modelo: "modelo-teste" });
+  ligarTodas(false); loja.zerar();
+  let fb = feedbackDoTurno(await atender("Quero o reembolso do pedido 1907."));
+  assert.ok(fb.some((l) => l.ok === false && /fora da política/.test(l.texto) && /mais que o valor/.test(l.texto)));
+  assert.ok(fb.some((l) => /nota do pedido entrou/.test(l.texto)));
+  ligarTrava("valorMaximo", true); loja.zerar();
+  fb = feedbackDoTurno(await atender("Quero o reembolso do pedido 1907."));
+  assert.ok(fb.some((l) => l.ok === true && /limitou o valor/.test(l.texto) && /dentro da política/.test(l.texto)));
+  ligarTodas(false); loja.zerar();
+});
+test("real · o chat leva o histórico da conversa para o modelo", async () => {
+  definirIA({ provedor: "teste", base: endereco, chave: "x", modelo: "modelo-teste" });
+  await atender("É o pedido 1842.", [{ role: "user", content: "Quero meu dinheiro de volta." }, { role: "assistant", content: "Qual é o número do pedido?" }]);
+  assert.deepEqual(ultimasMensagens.slice(0, 4).map((m) => m.role), ["system", "user", "assistant", "user"]);
+  loja.zerar(); usarSimulada();
+});
+test("mudar as instruções zera os critérios já testados", () => {
+  definirInstrucoes("versão A");
+  registrarCriterio("numero", { ok: true, detalhe: "", resposta: "" });
+  definirInstrucoes("versão A");
+  assert.equal(lerEstadoAluno().criterios.numero.ok, true);
+  definirInstrucoes("versão B");
+  assert.deepEqual(lerEstadoAluno().criterios, {});
 });

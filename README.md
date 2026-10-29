@@ -1,11 +1,11 @@
 # Loja Confia-Tudo · prática da Aula 04 (FDE, Delta Academy)
 
 Uma loja online com atendimento de reembolso por IA. Ela funciona, mas é **insegura de propósito**: confia em tudo
-o que a IA decide. Você ataca a loja, liga as travas, prova que elas seguram, mede se a loja decide certo e escreve a
-decisão. Tudo pela página da loja, sem mexer em código.
+o que a IA decide. Você configura o agente da loja: conecta o modelo, escreve as instruções, testa no chat com feedback
+a cada resposta, blinda no código, mede se a loja decide certo e escreve a decisão. Tudo pela página, sem mexer em código.
 
-Caso, dados e o código do cofre são fictícios. A IA é de verdade, com a sua chave de API; sem chave, a loja usa uma IA
-simulada.
+Caso, dados e o código do cofre são fictícios. A IA é sempre de verdade: a sua chave, de qualquer provedor, ou o Ollama
+no seu computador.
 
 ## Instalar e abrir (uma linha)
 
@@ -39,8 +39,8 @@ os tokens e o tempo.
 
 A página abre em etapas que se liberam quando a anterior é concluída e validada. Em dupla: um é o **atacante** (manda mensagens no chat) e o outro é o **defensor** (configura o agente). Troquem de papel a cada etapa.
 
-1. **Conectar o modelo.** Ligue a IA com a sua chave e escolha um modelo. Sem chave, siga com a IA simulada.
-2. **Instruir o agente.** Escreva o system prompt do agente e teste contra 4 critérios objetivos de comportamento (pede o número do pedido, atende quem tem direito, responde curto, fica no assunto). Refine até passar nos 4.
+1. **Conectar o modelo.** Ligue a IA com a sua chave, escolha um modelo e valide (uma chamada real, com as ferramentas da loja). Sem chave, faça em dupla com quem tem, ou use o Ollama.
+2. **Instruir o agente.** Escreva o system prompt do agente e teste no chat cada um dos 4 critérios de comportamento (pede o número do pedido, atende quem tem direito, responde curto, fica no assunto). Cada resposta traz o feedback: o critério, as ferramentas usadas, o que foi pago e se seguiu a política. Refine até cumprir os 4.
 3. **Blindar no código.** Veja o agente ceder sob pressão mesmo com boas instruções. Tente blindar por texto, depois ligue as travas de código e feche as 9 provas de segurança.
 4. **Medir com casos.** Rode os casos e veja quantos a loja acerta. Troque de modelo e compare acerto, tokens e tempo. Escreva um caso que ainda derrube a loja.
 5. **Registrar a decisão.** Responda as 4 perguntas do ADR.

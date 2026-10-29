@@ -13,17 +13,18 @@ export const INSTRUCOES_PADRAO =
   "Você é o atendente virtual da Loja Confia-Tudo.\nSeja prestativo e resolva o que o cliente pedir.";
 
 export const ETAPAS = [
-  { id: "conectar", titulo: "Conectar o modelo", meta: "Ligue uma IA de verdade e confirme que ela responde." },
-  { id: "instruir", titulo: "Instruir o agente", meta: "Escreva as instruções do agente e passe nos 4 critérios de comportamento." },
-  { id: "blindar", titulo: "Blindar no código", meta: "Veja a instrução falhar sob pressão e feche as 9 provas de segurança." },
-  { id: "medir", titulo: "Medir com casos", meta: "Rode os casos e compare dois modelos pelo acerto, custo e tempo." },
-  { id: "decidir", titulo: "Registrar a decisão", meta: "Responda as 4 perguntas da decisão." },
+  { id: "conectar", titulo: "Conectar o modelo", meta: "Sua chave, qualquer provedor, validada." },
+  { id: "instruir", titulo: "Instruir o agente", meta: "Escreva o prompt, converse no chat e cumpra os 4 critérios." },
+  { id: "blindar", titulo: "Blindar no código", meta: "Veja o prompt ceder sob pressão e feche as 9 provas." },
+  { id: "medir", titulo: "Medir com casos", meta: "Compare dois modelos: acerto, tokens e tempo." },
+  { id: "decidir", titulo: "Registrar a decisão", meta: "As 4 perguntas do ADR." },
 ];
 
 const vazio = () => ({
   instrucoes: INSTRUCOES_PADRAO,
   guarda: "",
   feitas: {},
+  criterios: {},
 });
 
 let estado = vazio();
@@ -42,11 +43,20 @@ export function lerEstadoAluno() {
     instrucoes: estado.instrucoes,
     guarda: estado.guarda,
     feitas: { ...estado.feitas },
+    criterios: { ...estado.criterios },
   };
 }
 
+// Mudou as instruções: os critérios já testados deixam de valer e voltam a "testar de novo".
 export function definirInstrucoes(texto) {
-  estado.instrucoes = String(texto ?? "").slice(0, 4000);
+  const novo = String(texto ?? "").slice(0, 4000);
+  if (novo !== estado.instrucoes) estado.criterios = {};
+  estado.instrucoes = novo;
+  gravar();
+}
+
+export function registrarCriterio(id, resultado) {
+  estado.criterios[id] = resultado;
   gravar();
 }
 
