@@ -1,13 +1,14 @@
-// Sobe a Loja Confia-Tudo em http://localhost:3737. Não precisa editar.
-// Com `npm start`, o servidor reinicia sozinho quando você salva um arquivo (e a loja volta ao começo).
+// Sobe a Loja Confia-Tudo em http://localhost:3737.
 import { createServer } from "node:http";
 import { readFileSync } from "node:fs";
-import { atender } from "./src/atendimento.js";
+import { atender, travas, ligarTrava } from "./src/atendimento.js";
+import { rodarProvas } from "./src/provas.js";
+import { rodarCasos } from "./src/casos.js";
 import * as loja from "./src/loja.js";
 
 const PORTA = Number(process.env.PORTA) || 3737;
 const pagina = readFileSync(new URL("./pagina.html", import.meta.url), "utf8");
-const estado = () => ({ pedidos: loja.listarPedidos(), extrato: loja.extrato() });
+const estado = () => ({ pedidos: loja.listarPedidos(), extrato: loja.extrato(), travas: travas() });
 
 function lerCorpo(req) {
   return new Promise((ok) => {
@@ -24,7 +25,7 @@ function json(res, dados) {
   res.end(JSON.stringify(dados));
 }
 
-createServer(async (req, res) => {
+const servidor = createServer(async (req, res) => {
   if (req.method === "GET" && req.url === "/") {
     res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
     return res.end(pagina);
@@ -40,6 +41,25 @@ createServer(async (req, res) => {
     loja.zerar();
     return json(res, estado());
   }
+  if (req.method === "POST" && req.url === "/trava") {
+    const { id, ligada } = await lerCorpo(req);
+    ligarTrava(id, ligada);
+    return json(res, estado());
+  }
+  if (req.method === "POST" && req.url === "/provas") return json(res, { provas: rodarProvas(), ...estado() });
+  if (req.method === "POST" && req.url === "/casos") {
+    const { extras = [] } = await lerCorpo(req);
+    return json(res, { casos: rodarCasos(Array.isArray(extras) ? extras : []), ...estado() });
+  }
   res.writeHead(404);
   res.end();
-}).listen(PORTA, () => console.log(`Loja Confia-Tudo aberta em http://localhost:${PORTA}`));
+});
+
+servidor.on("error", (erro) => {
+  if (erro.code === "EADDRINUSE") {
+    console.log(`A loja já está aberta em http://localhost:${PORTA}`);
+    process.exit(0);
+  }
+  throw erro;
+});
+servidor.listen(PORTA, () => console.log(`Loja Confia-Tudo aberta em http://localhost:${PORTA}  (para fechar: Ctrl+C)`));

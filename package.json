@@ -3,8 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "node --watch servidor.js",
-    "test": "node --test"
+    "start": "node servidor.js",
+    "test": "node --test",
+    "eval": "node evals/rodar.js"
   },
   "engines": {
     "node": ">=18.11"
