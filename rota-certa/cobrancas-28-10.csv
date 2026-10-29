@@ -1,0 +1,23 @@
+id,data_hora,cliente,pedido,valor,status
+C1001,2026-10-28 08:02,Mercado Bom Preço,P-5501,180.00,pago
+C1002,2026-10-28 08:02,Mercado Bom Preço,P-5501,180.00,pago
+C1003,2026-10-28 08:15,Farmácia Vida,P-5502,95.50,pago
+C1004,2026-10-28 08:31,Loja do Zé,P-5503,240.00,pago
+C1005,2026-10-28 08:31,Loja do Zé,P-5503,240.00,pago
+C1006,2026-10-28 08:31,Loja do Zé,P-5503,240.00,pago
+C1007,2026-10-28 09:05,Padaria Pão Quente,P-5504,62.00,pago
+C1008,2026-10-28 09:20,Farmácia Vida,P-5510,95.50,pago
+C1009,2026-10-28 09:44,Construtora Alicerce,P-5505,620.00,pago
+C1010,2026-10-28 09:44,Construtora Alicerce,P-5505,620.00,pago
+C1011,2026-10-28 10:12,Ótica Visão,P-5506,130.00,pago
+C1012,2026-10-28 10:12,Ótica Visão,P-5506,130.00,estornado
+C1013,2026-10-28 10:40,Pet Shop Amigo,P-5507,88.90,pago
+C1014,2026-10-28 11:03,Livraria Saber,P-5508,150.00,pago
+C1015,2026-10-28 11:03,Livraria Saber,P-5508,150.00,pago
+C1016,2026-10-28 11:30,Mercado Bom Preço,P-5509,180.00,pago
+C1017,2026-10-28 13:05,Auto Peças Rápida,P-5511,310.00,pago
+C1018,2026-10-28 13:50,Floricultura Jardim,P-5512,45.00,pago
+C1019,2026-10-28 13:50,Floricultura Jardim,P-5512,54.00,pago
+C1020,2026-10-28 14:22,Restaurante Sabor,P-5513,210.00,pago
+C1021,2026-10-28 15:10,Auto Peças Rápida,P-5511,310.00,pago
+C1022,2026-10-28 16:00,Escola Aprender,P-5514,99.00,pago
