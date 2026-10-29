@@ -26,6 +26,7 @@ const vazio = () => ({
   guarda: "",
   feitas: {},
   criterios: {},
+  travas: {},
 });
 
 let estado = vazio();
@@ -46,6 +47,7 @@ export function lerEstadoAluno() {
     guarda: estado.guarda,
     feitas: { ...estado.feitas },
     criterios: { ...estado.criterios },
+    travas: { ...estado.travas },
   };
 }
 
@@ -54,6 +56,11 @@ export function definirInstrucoes(texto) {
   const novo = String(texto ?? "").slice(0, 4000);
   if (novo !== estado.instrucoes) estado.criterios = {};
   estado.instrucoes = novo;
+  gravar();
+}
+
+export function gravarTravas(ligadas) {
+  estado.travas = { ...ligadas };
   gravar();
 }
 

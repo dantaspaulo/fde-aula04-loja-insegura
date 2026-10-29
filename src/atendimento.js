@@ -5,7 +5,7 @@
 // A IA pode ser de verdade (com a chave do aluno) ou a simulada de reserva.
 import { iaSimulada } from "./ia.js";
 import { chamarModelo, configIA } from "./modelo.js";
-import { lerEstadoAluno } from "./estado-aluno.js";
+import { gravarTravas, lerEstadoAluno } from "./estado-aluno.js";
 import * as loja from "./loja.js";
 import { configuracao } from "./config.js";
 
@@ -19,16 +19,20 @@ export const TRAVAS = [
   { id: "pessoa", nome: "Acima de R$ 500, uma pessoa decide", ideia: "Erro caro vai para uma pessoa." },
 ];
 
-const ligadas = Object.fromEntries(TRAVAS.map((t) => [t.id, false]));
+// As travas ficam gravadas com o resto do que o aluno fez: fechar e abrir a loja não as desliga.
+const salvas = lerEstadoAluno().travas;
+const ligadas = Object.fromEntries(TRAVAS.map((t) => [t.id, Boolean(salvas[t.id])]));
 
 export function travas() {
   return TRAVAS.map((t) => ({ ...t, ligada: ligadas[t.id] }));
 }
 export function ligarTrava(id, ligada) {
   if (id in ligadas) ligadas[id] = Boolean(ligada);
+  gravarTravas(ligadas);
 }
 export function ligarTodas(ligada) {
   for (const id of Object.keys(ligadas)) ligadas[id] = Boolean(ligada);
+  gravarTravas(ligadas);
 }
 
 // O prompt com que a loja colocou o agente no ar. Mal escrito de propósito, e o aluno NÃO o vê:

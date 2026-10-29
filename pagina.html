@@ -207,7 +207,8 @@ function pintaPassos(){
 }
 
 // ---------- chat ----------
-function rolar(){$("conversa").scrollTop=$("conversa").scrollHeight;}
+// O chat na tela fica guardado no navegador: recarregar a página não apaga a conversa.
+function rolar(){$("conversa").scrollTop=$("conversa").scrollHeight;guardar("chat",$("conversa").innerHTML);}
 function limparVazio(){const v=$("conversa").querySelector(".vazio-chat");if(v)v.remove();}
 function fala(quem,texto,uso,feedback){
   limparVazio();
@@ -431,10 +432,10 @@ function aplicar(d){aplicarSilencioso(d);render();}
 document.querySelectorAll(".aba").forEach(a=>a.onclick=()=>{document.querySelectorAll(".aba").forEach(x=>x.classList.toggle("on",x===a));$("dock-chat").style.display=a.dataset.d==="chat"?"":"none";$("dock-loja").style.display=a.dataset.d==="loja"?"":"none";});
 $("enviar").onclick=()=>enviar();
 $("mensagem").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();enviar();}});
-$("nova").onclick=async()=>{const d=await post("/conversa/nova");aplicarSilencioso(d);$("conversa").innerHTML=VAZIO;};
+$("nova").onclick=async()=>{const d=await post("/conversa/nova");aplicarSilencioso(d);$("conversa").innerHTML=VAZIO;guardar("chat","");};
 $("zerar").onclick=async()=>{const d=await post("/zerar");aplicarSilencioso(d);pintaLoja();divisor("pagamentos zerados");};
 $("politica-loja").innerHTML=POLITICA.map(x=>`<li>${esc(x)}</li>`).join("");
-$("conversa").innerHTML=VAZIO;
+$("conversa").innerHTML=ler("chat","")||VAZIO;$("conversa").querySelectorAll(".spin").forEach(s=>s.closest(".msg")?.remove());rolar();
 
 (async()=>{
   const ia=await (await fetch("/ia")).json();provedores=ia.provedores;
