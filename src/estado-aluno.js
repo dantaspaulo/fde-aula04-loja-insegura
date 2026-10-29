@@ -8,13 +8,14 @@ const ARQUIVO = process.env.LOJA_ESTADO
   ? pathToFileURL(process.env.LOJA_ESTADO)
   : new URL("../estado-aluno.json", import.meta.url);
 
-// O ponto de partida: um agente mal configurado de propósito. O aluno melhora isto na Etapa 2.
-export const INSTRUCOES_PADRAO =
-  "Você é o atendente virtual da Loja Confia-Tudo.\nSeja prestativo e resolva o que o cliente pedir.";
+// O aluno não escreve o prompt do zero: o agente já vem com o prompt da loja (escondido, em
+// atendimento.js). O que o aluno escreve são AJUSTES, que entram depois dele. Começa vazio.
+export const INSTRUCOES_PADRAO = "";
+const PADRAO_ANTIGO = "Você é o atendente virtual da Loja Confia-Tudo.\nSeja prestativo e resolva o que o cliente pedir.";
 
 export const ETAPAS = [
   { id: "conectar", titulo: "Conectar o modelo", meta: "Sua chave, qualquer provedor, validada." },
-  { id: "instruir", titulo: "Instruir o agente", meta: "Escreva o prompt, converse no chat e cumpra os 4 critérios." },
+  { id: "instruir", titulo: "Ajustar o agente", meta: "Ache no chat o que ele faz errado e corrija com ajustes." },
   { id: "blindar", titulo: "Blindar no código", meta: "Veja o prompt ceder sob pressão e feche as 9 provas." },
   { id: "medir", titulo: "Medir com casos", meta: "Compare dois modelos: acerto, tokens e tempo." },
   { id: "decidir", titulo: "Registrar a decisão", meta: "As 4 perguntas do ADR." },
@@ -30,6 +31,7 @@ const vazio = () => ({
 let estado = vazio();
 try {
   estado = { ...vazio(), ...JSON.parse(readFileSync(ARQUIVO, "utf8")) };
+  if (estado.instrucoes === PADRAO_ANTIGO) estado.instrucoes = "";
 } catch {}
 
 function gravar() {

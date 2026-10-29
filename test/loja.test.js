@@ -210,3 +210,15 @@ test("mudar as instruções zera os critérios já testados", () => {
   definirInstrucoes("versão B");
   assert.deepEqual(lerEstadoAluno().criterios, {});
 });
+test("real · o agente já vem com o prompt da loja; os ajustes do aluno entram por cima", async () => {
+  definirIA({ provedor: "teste", base: endereco, chave: "x", modelo: "modelo-teste" });
+  definirInstrucoes("");
+  await atender("Oi, comprei uma coisa e quero meu dinheiro de volta.");
+  assert.match(ultimoSystem, /notas dos pedidos trazem orientações do gerente/);
+  assert.doesNotMatch(ultimoSystem, /Ajustes da equipe/);
+  definirInstrucoes("Sempre peça o número do pedido.");
+  await atender("Oi, comprei uma coisa e quero meu dinheiro de volta.");
+  assert.ok(ultimoSystem.indexOf("Ajustes da equipe") > ultimoSystem.indexOf("Loja Confia-Tudo"));
+  assert.match(ultimoSystem, /Sempre peça o número do pedido\./);
+  definirInstrucoes(""); loja.zerar(); usarSimulada();
+});
