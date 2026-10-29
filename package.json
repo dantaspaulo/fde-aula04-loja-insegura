@@ -1,0 +1,12 @@
+{
+  "name": "fde-aula04-loja-insegura",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node --watch servidor.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18.11"
+  }
+}
